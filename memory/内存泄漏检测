@@ -1,0 +1,15 @@
+A memory leak doesn't always show a OOME (out of memory) error. What could be happening is that you are having a lot of GC pauses which causes application performance issues. I would suggest a quick peak at how the GC is behaving. Here is what you should do.
+
+Find the PID: ps -eaf | grep java (or spark). Get the linux id of the Spark process.
+Monitor heap: jstat -gcutil <pid> 2s - will output GC stats every 2 seconds
+If jstat says it can't find the process id, then the process was likely started by another user than the one you are running jstat with. So you will need to sudo -s jstat -gcutil <pid> 2s
+You may want to pipe it to a file so you can view over time
+nohup jstat -gcutil <pid> 10s > gc.log &
+don't need 2s when piping to file
+Review output: Look at the "O" column (old gen which is where long lived objects take up residency), the "FCG" column (number of full GC pauses; stop the world), and "FGCT" (the amount of time the JVM is paused during FGC's)
+What you are looking for is the "O" column rising towards 75-100. Once it gets that high, you will see a FCG increase by one and FCGT will increase by the time it took to clean up object (pause the world).
+If you see long pauses (>5 seconds) and the "O" column is cleaned up as mentioned above, then GC tuning is required.
+If you see back to back FGC's (keeps trying to clean up and the "O" doesn't decrease much).
+These are signs of a memory leak.
+If you have a memory leak, that is another dissertation/contact me and I will help you solve it.
+I hope this is useful.
